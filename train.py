@@ -4,6 +4,7 @@ from environment import GomokuEnvironment
 NUM_ITERATIONS = 100                            # alpha go used 80 here
 NUM_EPISODES = 250                              # alpha go used 25000 here
 THRESHOLD = 0.55                                # same as alpha go paper
+NUM_PIT_GAMES = 400                             # same as alpha go paper
 BOARD_SIZE = 9
 
 
@@ -21,7 +22,7 @@ def policy_iteration():
         new_agent = GomokuAgent().train(examples)
         
         # compare new net with previous net
-        frac_win = pit(agent, new_agent, env, num_games=200)
+        frac_win = pit(agent, new_agent, env, num_games=NUM_PIT_GAMES)
         if frac_win > THRESHOLD:
             # replace with new net
             agent = new_agent
