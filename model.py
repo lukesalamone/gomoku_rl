@@ -2,45 +2,55 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class GomokuNet(nn.Module):
+    """
+    Use AlexNet for network.
+    https://github.com/dansuh17/alexnet-pytorch/blob/master/model.py
+    """
+
     def __init__(self, size):
         super().__init__()
-        self.conv1 = nn.Conv2d(3, 6, 3)
-        self.batch_norm = nn.BatchNorm2d(3)
+        self.conv_layers = nn.Sequential(
+            nn.Conv2d(in_channels=3, out_channels=96, kernel_size=11, stride=4),
+            nn.ReLU(),
+            nn.LocalResponseNorm(size=5, alpha=0.0001, beta=0.75, k=2),
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.Conv2d(96, 256, 5, padding=2),
+            nn.ReLU(),
+            nn.LocalResponseNorm(size=5, alpha=0.0001, beta=0.75, k=2),
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.Conv2d(256, 384, 3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(384, 384, 3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(384, 256, 3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2),
+        )
+        self.fc_layers = nn.Sequential(
+            nn.Dropout(p=0.5, inplace=True),
+            nn.Linear(in_features=(256 * 6 * 6), out_features=4096),
+            nn.ReLU(),
+            nn.Dropout(p=0.5, inplace=True),
+            nn.Linear(in_features=4096, out_features=4096),
+            nn.ReLU(),
+            nn.Linear(in_features=4096, out_features=size**2),
+        )
+        self.init_bias()
 
-
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
-
-    def forward(self, x):
+    def init_bias(self):
+        for layer in self.conv_layers:
+            if isinstance(layer, nn.Conv2d):
+                nn.init.normal_(layer.weight, mean=0, std=0.1)
+                nn.init.constant_(layer.bias, 0)
         
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = torch.flatten(x, 1) # flatten all dimensions except batch
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
+        nn.init.constant_(self.conv_layers[4].bias, 1)
+        nn.init.constant_(self.conv_layers[10].bias, 1)
+        nn.init.constant_(self.conv_layers[12].bias, 1)
 
-
-# https://towardsdatascience.com/residual-network-implementing-resnet-a7da63c7b278
-class ResidualLayer(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.blocks = nn.Identity()
-        self.activation = nn.ReLU(inplace=True)
-        self.shortcut = nn.Identity()
 
     def forward(self, x):
-        residual = x
-        if self.in_channels != self.out_channels:
-            residual = self.shortcut
-
-        x = self.blocks(x)
-        x += residual
-        return self.activation(x)
+        x = self.conv_layers(x)
+        x = x.view(-1, 256*6*6)
+        return self.fc_layers(x)
