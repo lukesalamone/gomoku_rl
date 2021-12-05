@@ -116,7 +116,7 @@ class GomokuAgent:
     def select_move(self, board, color, available_moves):
         available_moves = set(available_moves)
         board = self.net.encode_board(board, color)
-        board.to(self.device)
+        board = board.to(self.device)
         suggestions = self.net(board)
         # print(suggestions)
 
