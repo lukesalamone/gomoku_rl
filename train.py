@@ -1,5 +1,6 @@
 from agent import GomokuAgent
 from environment import GomokuEnvironment
+from tqdm.autonotebook import tqdm
 
 NUM_ITERATIONS = 100                            # alpha go used 80 here
 NUM_EPISODES = 250                              # alpha go used 25000 here
@@ -12,14 +13,15 @@ def policy_iteration():
     env = GomokuEnvironment(size=BOARD_SIZE)
     
     # initialise random neural network
-    agent = GomokuAgent(size=BOARD_SIZE)
+    agent = GomokuAgent(size=BOARD_SIZE, training_mode=True)
 
     examples = []
     for _ in range(NUM_ITERATIONS):
-        for _ in range(NUM_EPISODES):
+        for _ in tqdm(range(NUM_EPISODES)):
             # collect examples from this game
             examples += exec_episode(env, agent)
-        new_agent = GomokuAgent().train(examples)
+        new_agent = GomokuAgent(size=BOARD_SIZE)
+        new_agent.train(examples)
         
         # compare new net with previous net
         frac_win = pit(agent, new_agent, env, num_games=NUM_PIT_GAMES)
@@ -29,41 +31,46 @@ def policy_iteration():
     return agent
 
 
-
+# play one game
 def exec_episode(env, agent):
-    examples = []
-    state = env.reset()
+    white_examples = []
+    black_examples = []
+    env.reset()
+
+    state = env.board()
     done = False
-    reward = None
+    # reward = None
+    color = 0
 
     while not done:
-        action = agent.act(state)
-        next_state, reward, done, _ = env.step(action)
+        action = agent.select_move(state, color, env.available_moves())
+        next_state, reward, done = env.step(action)
         
         # reward = None b/c we don't know it yet
-        examples.append([state, action, next_state, reward])
+        if color == 0:
+            white_examples.append([state, action])
+        else:
+            black_examples.append([state, action])
+        color = 1 if color == 0 else 0
+        state = next_state
 
-    examples = assign_rewards(examples, reward)
-    return examples
-
-def assign_rewards(examples, reward):
-    reward0 = reward if len(examples)%2 == 1 else -reward
-    reward1 = -reward0
-
-    for i in range(len(examples)):
-        examples[i][3] = reward0 if i%2 == 0 else reward1
-
-    return examples
-
+    # examples = assign_rewards(examples, reward)
+    examples = white_examples if color == 0 else black_examples
+    return [(state,color,action) for state,action in examples]
 
 # play agent1 against agent2 and return win percentage for agent2
 def pit(agent1, agent2, env, num_games):
     wins = 0
 
-    for game in range(num_games):
+    for game in tqdm(range(num_games), desc='playing pit games'):
 
         # agents take turn moving first
-        player1,player2 = agent1,agent2 if game%2 == 0 else agent2,agent1
+        if game%2 == 0:
+            player1 = agent1
+            player2 = agent2
+        else:
+            player1 = agent2
+            player2 = agent1
 
         # play one game
         result = play_game(player1, player2, env)
@@ -73,9 +80,7 @@ def pit(agent1, agent2, env, num_games):
         if game%2 == 1 and result == 1:
             wins += 1
     
-    return wins/200
-
-
+    return wins/num_games
 
 def play_game(player1, player2, env):
     env.reset()
@@ -85,15 +90,19 @@ def play_game(player1, player2, env):
 
     while not done:
         available_moves = env.available_moves()
-        state = env.board_state()
+        state = env.board()
 
         if move_counter%2 == 0:
-            move = player1.select_move(state, available_moves)
+            move = player1.select_move(state, 0, available_moves)
         else:
-            move = player2.select_move(state, available_moves)
+            move = player2.select_move(state, 1, available_moves)
         assert move in available_moves, 'agent selected illegal move!'
 
-        _, reward, done, info =  env.step(move)
+        _, reward, done =  env.step(move)
 
     # reward = 1 if player1 wins, -1 if player2 wins, 0 if draw
     return reward
+
+
+if __name__ == '__main__':
+    policy_iteration()

@@ -11,33 +11,32 @@ class GomokuEnvironment:
 
     # apply an action to the board
     def step(self, action):
-        assert self.env.state.color == self.env.player_color # it's the player's turn
+        # assert self.env.state.color == self.env.player_color # it's the player's turn
         
         # If already terminal, then don't do anything
         if self.env.done:
-            return self.env.state.board.encode(), 0., True, {'state': self.env.state}
+            return self.env.state.board.encode(), 0., True
         
         # Player play
         self.env.state = self.env.state.act(action)
         self.env.action_space.remove(action)
         
         # Reward: if nonterminal, there is no 5 in a row, then the reward is 0
-        if not self.state.board.is_terminal():
+        if not self.env.state.board.is_terminal():
             self.env.done = False
-            return self.env.state.board.encode(), 0., False, {'state': self.env.state}
+            return self.env.state.board.encode(), 0., False
         
         # We're in a terminal state. Reward is 1 if won, -1 if lost
         self.env.done = True
         
-        # Check Fianl wins
-        _, winner = self.check_five_in_row(self.env.state.board.board_state) # 'empty', 'black', 'white'
+        winner = self.check_five_in_row(self.env.state.board.board_state)
         win_color = 'black' if winner == 1 else 'white'
         reward = 0.
         if winner == 0: # draw
             reward = 0.
         else:
             reward = 1 if winner == 1 else -1
-        return self.env.state.board.encode(), reward, True, {'state': self.env.state}
+        return self.env.state.board.encode(), reward, True
 
     # return list of available moves
     def available_moves(self):
@@ -45,6 +44,10 @@ class GomokuEnvironment:
 
     def reset(self):
         self.env.reset()
+        return self
+
+    def board(self):
+        return self.env.state.board.board_state
 
     # return 1 if player1 wins, 2 if player2 wins, 0 for no winner
     def check_five_in_row(self, board):
@@ -96,3 +99,5 @@ class GomokuEnvironment:
                 if(winner):
                     return winner
         return 0
+
+    
