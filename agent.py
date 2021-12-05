@@ -120,7 +120,7 @@ class GomokuAgent:
         suggestions = self.net(board)
         # print(suggestions)
 
-        mask = torch.ones(self.size ** 2)
+        mask = torch.ones(self.size ** 2).to(self.device)
 
         # zero out the probabilities for illegal moves
         for i in range(len(mask)):
