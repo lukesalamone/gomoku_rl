@@ -82,26 +82,27 @@ class GomokuAgent:
         self.net = GomokuNet(size=size)
         self.training_mode = training_mode
         self.size = size
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.net.to(self.device)
 
     # train based on previous board positions
     def train(self, examples):
         start_time = time.time()
         LEARNING_RATE = 0.001
         TRAIN_EPOCHS = 10
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         training_data = GomokuDataset(examples, self.net.encode_board)
         dataloader = DataLoader(training_data, batch_size=16, shuffle=True)
         lossFn = NormalizedEuclideanLoss(self.size)
         optimizer = optim.Adam(self.net.parameters(), lr=LEARNING_RATE)
-        self.net.to(device)
+        self.net.to(self.device)
 
         for epoch in tqdm(range(TRAIN_EPOCHS)):
             print(f'TRAINING: epoch {epoch+1}/{TRAIN_EPOCHS}')
             # running_loss = 0.0
 
             for i,(x,y) in enumerate(dataloader):
-                x = x.to(device)
-                y = y.to(device)
+                x = x.to(self.device)
+                y = y.to(self.device)
                 optimizer.zero_grad()
                 predictions = self.net(torch.squeeze(x, dim=1))
                 loss = lossFn(predictions, y)
@@ -115,6 +116,7 @@ class GomokuAgent:
     def select_move(self, board, color, available_moves):
         available_moves = set(available_moves)
         board = self.net.encode_board(board, color)
+        board.to(self.device)
         suggestions = self.net(board)
         # print(suggestions)
 
