@@ -88,6 +88,7 @@ class GomokuAgent:
     # train based on previous board positions
     def train(self, examples):
         start_time = time.time()
+        print(f'training with {len(examples)} examples')
         LEARNING_RATE = 0.001
         TRAIN_EPOCHS = 10
         training_data = GomokuDataset(examples, self.net.encode_board)

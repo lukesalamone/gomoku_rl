@@ -28,6 +28,7 @@ def policy_iteration():
         if frac_win > THRESHOLD:
             # replace with new net
             agent = new_agent
+            print(f'new agent won {100*frac_win:0.2f}% of games, updating')
     return agent
 
 
