@@ -1,2 +1,8 @@
 .ipynb_checkpoints/
 __pycache__/
+.vscode/settings.json
+*.xml
+*.iml
+*.log
+wandb/*
+.idea

@@ -1,39 +1,62 @@
 from environment import GomokuEnvironment
+import wandb
 from tqdm.autonotebook import tqdm
 
 from agent import GomokuAgent
 from minimax_agent import MinimaxAgent
 
-NUM_ITERATIONS = 100                            # alpha go used 80 here
-NUM_EPISODES = 250                              # alpha go used 25000 here
-THRESHOLD = 0.55                                # same as alpha go paper
-NUM_PIT_GAMES = 400                             # same as alpha go paper
-NUM_MINIMAX_GAMES = 100
+# NUM_ITERATIONS = 100  # alpha go used 80 here
+# NUM_EPISODES = 250  # alpha go used 25000 here
+# THRESHOLD = 0.55  # same as alpha go paper
+# NUM_PIT_GAMES = 400  # same as alpha go paper
+# NUM_MINIMAX_GAMES = 100
+# BOARD_SIZE = 9
+
+NUM_ITERATIONS = 1  # alpha go used 80 here
+NUM_EPISODES = 2  # alpha go used 25000 here
+THRESHOLD = 0.55  # same as alpha go paper
+NUM_PIT_GAMES = 10  # same as alpha go paper
+NUM_MINIMAX_GAMES = 10
 BOARD_SIZE = 9
 
 
 def policy_iteration():
+    wandb.init(project="oh-yeah", entity="gomokoolaid")
+
+    wandb.config = {
+        "num_iterations": NUM_ITERATIONS,
+        "num_episodes": NUM_EPISODES,
+        "threshold": THRESHOLD,
+        "num_pit_games": NUM_PIT_GAMES,
+        "num_minimax_games": NUM_MINIMAX_GAMES,
+        "board_size": BOARD_SIZE 
+    }
+        
     env = GomokuEnvironment(size=BOARD_SIZE)
-    
+
     # initialise random neural network
-    agent = GomokuAgent(size=BOARD_SIZE, training_mode=True)
+    agent = GomokuAgent(size=BOARD_SIZE, wandb=wandb)
+    wandb.watch(agent.net)
 
     examples = []
-    for _ in range(NUM_ITERATIONS):
+    for iter_num in range(NUM_ITERATIONS):
         for _ in tqdm(range(NUM_EPISODES)):
             # collect examples from this game
             examples += exec_episode(env, agent)
-        new_agent = GomokuAgent(size=BOARD_SIZE)
+        new_agent = GomokuAgent(size=BOARD_SIZE, wandb=wandb)
+        wandb.watch(new_agent.net)
         new_agent.train(examples)
-        
+
         # compare new net with previous net
         frac_win = pit(agent, new_agent, env, num_games=NUM_PIT_GAMES)
+        wandb.log({"pit_win_pct": frac_win})
         if frac_win > THRESHOLD:
             # save old agent for posterity
 
             # replace with new net
             agent = new_agent
-            print(f'new agent won {100*frac_win:0.2f}% of games, updating')
+            wandb.log({"agent_swap": iter_num})
+            print(f"new agent won {100*frac_win:0.2f}% of games, updating")
 
         play_minimax_games(NUM_MINIMAX_GAMES, agent, env)
 
@@ -55,7 +78,7 @@ def exec_episode(env, agent):
     while not done:
         action = agent.select_move(state, color, env.available_moves())
         next_state, reward, done = env.step(action)
-        
+
         # reward = None b/c we don't know it yet
         examples.append(state)
         state = next_state
@@ -65,14 +88,15 @@ def exec_episode(env, agent):
     examples = [(x, reward) for x in examples]
     return examples
 
+
 # play agent1 against agent2 and return win percentage for agent2
 def pit(agent1, agent2, env, num_games):
     wins = 0
 
-    for game in tqdm(range(num_games), desc='playing pit games'):
+    for game in tqdm(range(num_games), desc="playing pit games"):
 
         # agents take turn moving first
-        if game%2 == 0:
+        if game % 2 == 0:
             player1 = agent1
             player2 = agent2
         else:
@@ -82,12 +106,13 @@ def pit(agent1, agent2, env, num_games):
         # play one game
         result = play_game(player1, player2, env)
 
-        if game%2 == 0 and result == -1:
+        if game % 2 == 0 and result == -1:
             wins += 1
-        if game%2 == 1 and result == 1:
+        if game % 2 == 1 and result == 1:
             wins += 1
-    
-    return wins/num_games
+
+    return wins / num_games
+
 
 def play_game(player1, player2, env):
     env.reset()
@@ -99,13 +124,13 @@ def play_game(player1, player2, env):
         available_moves = env.available_moves()
         state = env.board()
 
-        if move_counter%2 == 0:
+        if move_counter % 2 == 0:
             move = player1.select_move(state, 1, available_moves)
         else:
             move = player2.select_move(state, -1, available_moves)
-        assert move in available_moves, 'agent selected illegal move!'
+        assert move in available_moves, "agent selected illegal move!"
 
-        _, reward, done =  env.step(move)
+        _, reward, done = env.step(move)
 
     # reward = 1 if player1 wins, -1 if player2 wins, 0 if draw
     return reward
@@ -119,15 +144,17 @@ def play_minimax_games(num_games, agent, env):
         opponent = MinimaxAgent(agent.size, depth=depth)
         wins = 0
         for game in range(num_games):
-            if game%2 == 0:
+            if game % 2 == 0:
                 result = play_game(agent, opponent, env)
             else:
                 result = -1 * play_game(opponent, agent, env)
 
             wins += 1 if result == 1 else 0
         win_pct = wins / num_games
-        print(f'win % at minimax depth {depth} was {win_pct*100:0.1f}')
+        print(f"win % at minimax depth {depth} was {win_pct*100:0.1f}")
         depth += 1
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
+    
     policy_iteration()

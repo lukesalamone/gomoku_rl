@@ -51,9 +51,10 @@ def check_five_in_row(board):
                 return winner
     return 0
 
-def encode_board(self, board):
+def encode_board(board):
     def gather_player_moves(board, player):
-        result = torch.zeros((self.board_size, self.board_size))
+        size = len(board)
+        result = torch.zeros((size, size))
         for i in range(len(board)):
             for j in range(len(board[i])):
                 if board[i][j] == player:

@@ -10,7 +10,6 @@ import time
 
 from model import GomokuNet
 from utils import encode_board, decode_position, encode_position
-
 class GomokuDataset(Dataset):
     def __init__(self, data):
         self.states, self.values = zip(*data)
@@ -20,15 +19,16 @@ class GomokuDataset(Dataset):
         return self.len
 
     def __getitem__(self, idx):
-        x = encode_board(self.states[idx], self.colors[idx])
-        y = torch.tensor(self.actions[idx], dtype=float, requires_grad=True)
+        x = encode_board(self.states[idx])
+        y = torch.tensor(self.values[idx], dtype=float, requires_grad=True)
         return x,y
 
 class GomokuAgent:
-    def __init__(self, size, training_mode=True):
+    def __init__(self, size, wandb):
         # initialize neural net
         self.net = GomokuNet(size=size)
-        self.training_mode = training_mode
+        self.wandb = wandb
+        self.wandb.watch(self.net)
         self.size = size
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.net.to(self.device)
@@ -43,6 +43,7 @@ class GomokuAgent:
             return np.random.choice(_examples, size=buffer_size, replace=False, p=probs)
 
         start_time = time.time()
+        # self.wandb.log()
         print(f'training with {len(examples)} examples')
         LEARNING_RATE = 0.001
         TRAIN_EPOCHS = 10
@@ -69,6 +70,8 @@ class GomokuAgent:
                 loss.backward()
                 optimizer.step()
                 running_loss += loss.item()
+                self.wandb.log({'loss':loss})
+                self.wandb.log({'running_loss':running_loss})
         print(f'finished training in {int(time.time() - start_time)} seconds')
         return self
 
@@ -76,9 +79,9 @@ class GomokuAgent:
     # TODO experiment with training_mode to sample rather than greedy select
     def select_move(self, board, color, available_moves):
         available_moves = set(available_moves)
-        available_moves = [decode_position(pos) for pos in available_moves]
+        available_moves = [decode_position(pos, self.size) for pos in available_moves]
 
-        board = encode_board(board, color)
+        board = encode_board(board)
         board = board.to(self.device)
 
         # evaluate value function for each position IF WE WENT THERE
@@ -86,9 +89,18 @@ class GomokuAgent:
         best_val = -float('inf') if color == 1 else float('inf')
         best_move = None
         for y,x in available_moves:
-            board[y,x] = color
+            # print(board.size())
+            if color == 1:
+                board[0,0,y,x] = 1
+            else:
+                board[0,1,y,x] = 1
+
             value = self.net(board)
-            board[y,x] = 0
+
+            if color == 1:
+                board[0,0,y,x] = 0
+            else:
+                board[0,1,y,x] = 0
 
             if value > best_val and color == 1:
                 best_val = value

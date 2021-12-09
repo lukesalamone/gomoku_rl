@@ -1,3 +1,5 @@
 gym==0.17.3
 gym_gomoku==0.0.1
 ipywidgets==7.6.3
+wandb==0.12.7
+black==19.10b0

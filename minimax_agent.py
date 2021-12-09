@@ -68,7 +68,7 @@ class MinimaxAgent:
 
         def horizontal_score(board):
             score = 0
-            for row in range(len(board)):
+            for row in board:
                 current, streak = 0, 0
                 for square in row:
                     current, streak, score = score_consec(square, current, streak, score)

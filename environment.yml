@@ -1,0 +1,23 @@
+name: deeprl
+channels:
+  - anaconda
+  - conda-forge
+  - pytorch
+  - defaults
+dependencies:
+  - python>=3.7,<3.9
+  - pip
+  - matplotlib
+  - scikit-learn
+  - numpy
+  - pandas
+  - jupyterlab
+  - wandb
+  - tqdm
+  - pytorch
+  - gym==0.17.3
+  - ipywidgets==7.6.3
+  - black
+  - pip:
+    - gym_gomoku==0.0.1
+  
