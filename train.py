@@ -5,19 +5,19 @@ from tqdm.autonotebook import tqdm
 from agent import GomokuAgent
 from minimax_agent import MinimaxAgent
 
-# NUM_ITERATIONS = 100  # alpha go used 80 here
-# NUM_EPISODES = 250  # alpha go used 25000 here
-# THRESHOLD = 0.55  # same as alpha go paper
-# NUM_PIT_GAMES = 400  # same as alpha go paper
-# NUM_MINIMAX_GAMES = 100
-# BOARD_SIZE = 9
-
-NUM_ITERATIONS = 1  # alpha go used 80 here
-NUM_EPISODES = 2  # alpha go used 25000 here
+NUM_ITERATIONS = 100  # alpha go used 80 here
+NUM_EPISODES = 250  # alpha go used 25000 here
 THRESHOLD = 0.55  # same as alpha go paper
-NUM_PIT_GAMES = 10  # same as alpha go paper
-NUM_MINIMAX_GAMES = 10
+NUM_PIT_GAMES = 400  # same as alpha go paper
+NUM_MINIMAX_GAMES = 100
 BOARD_SIZE = 9
+
+# NUM_ITERATIONS = 1  # alpha go used 80 here
+# NUM_EPISODES = 2  # alpha go used 25000 here
+# THRESHOLD = 0.55  # same as alpha go paper
+# NUM_PIT_GAMES = 10  # same as alpha go paper
+# NUM_MINIMAX_GAMES = 10
+# BOARD_SIZE = 9
 
 
 def policy_iteration():
@@ -156,5 +156,4 @@ def play_minimax_games(num_games, agent, env):
 
 
 if __name__ == "__main__":
-    
     policy_iteration()

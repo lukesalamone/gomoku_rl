@@ -65,7 +65,7 @@ class GomokuAgent:
                 x = x.to(self.device)
                 y = y.to(self.device)
                 optimizer.zero_grad()
-                predictions = self.net(torch.squeeze(x, dim=1))
+                predictions = self.net(torch.squeeze(x, dim=1)).squeeze(dim=1)
                 loss = F.mse_loss(predictions, y).float()
                 loss.backward()
                 optimizer.step()
