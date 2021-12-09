@@ -1,5 +1,5 @@
 from os import replace
-from tqdm.autonotebook import tqdm
+from tqdm import tqdm
 import numpy as np
 import torch
 import torch.optim as optim
@@ -37,28 +37,30 @@ class GomokuAgent:
     def train(self, examples):
         def select_examples(_examples, buffer_size):
             m = len(_examples) - buffer_size
+            n = len(_examples)
             probs_old = [1/m/2 for _ in range(m)]
             probs_new = [1/buffer_size/2 for _ in range(buffer_size)]
             probs = probs_old + probs_new
-            return np.random.choice(_examples, size=buffer_size, replace=False, p=probs)
+            idx = np.random.choice([x for x in range(n)], size=buffer_size, replace=False, p=probs)
+            return [_examples[x] for x in idx]
 
         start_time = time.time()
-        # self.wandb.log()
         print(f'training with {len(examples)} examples')
         LEARNING_RATE = 0.001
         TRAIN_EPOCHS = 10
-        BUFFER_SIZE = 2000
+        BUFFER_SIZE = 10_000
+        BATCH_SIZE = 2048
 
         if len(examples) > BUFFER_SIZE:
             examples = select_examples(examples, BUFFER_SIZE)
 
         training_data = GomokuDataset(examples)
-        dataloader = DataLoader(training_data, batch_size=16, shuffle=True)
+        dataloader = DataLoader(training_data, batch_size=BATCH_SIZE, shuffle=True)
         optimizer = optim.Adam(self.net.parameters(), lr=LEARNING_RATE)
         self.net.to(self.device)
 
         for epoch in tqdm(range(TRAIN_EPOCHS)):
-            print(f'TRAINING: epoch {epoch+1}/{TRAIN_EPOCHS}')
+            # print(f'TRAINING: epoch {epoch+1}/{TRAIN_EPOCHS}')
             running_loss = 0.0
 
             for i,(x,y) in enumerate(dataloader):

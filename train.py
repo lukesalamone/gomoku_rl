@@ -1,6 +1,6 @@
 from environment import GomokuEnvironment
 import wandb
-from tqdm.autonotebook import tqdm
+from tqdm import tqdm
 
 from agent import GomokuAgent
 from minimax_agent import MinimaxAgent
@@ -8,7 +8,7 @@ from minimax_agent import MinimaxAgent
 NUM_ITERATIONS = 100  # alpha go used 80 here
 NUM_EPISODES = 250  # alpha go used 25000 here
 THRESHOLD = 0.55  # same as alpha go paper
-NUM_PIT_GAMES = 400  # same as alpha go paper
+NUM_PIT_GAMES = 150  # alpha go paper used 400
 NUM_MINIMAX_GAMES = 100
 BOARD_SIZE = 9
 
@@ -40,7 +40,8 @@ def policy_iteration():
 
     examples = []
     for iter_num in range(NUM_ITERATIONS):
-        for _ in tqdm(range(NUM_EPISODES)):
+        print('='*25,f' EPISODE {iter_num} ','='*25)
+        for _ in tqdm(range(NUM_EPISODES), desc='gathering game episodes'):
             # collect examples from this game
             examples += exec_episode(env, agent)
         new_agent = GomokuAgent(size=BOARD_SIZE, wandb=wandb)
@@ -50,6 +51,7 @@ def policy_iteration():
         # compare new net with previous net
         frac_win = pit(agent, new_agent, env, num_games=NUM_PIT_GAMES)
         wandb.log({"pit_win_pct": frac_win})
+        print('')
         if frac_win > THRESHOLD:
             # save old agent for posterity
 
@@ -143,15 +145,20 @@ def play_minimax_games(num_games, agent, env):
         # play some games, record win % of agent
         opponent = MinimaxAgent(agent.size, depth=depth)
         wins = 0
+        white_wins, black_wins = 0, 0
         for game in tqdm(range(num_games), desc='playing minimax games'):
             if game % 2 == 0:
                 result = play_game(agent, opponent, env)
+                white_wins += 1 if result == 1 else 0
             else:
                 result = -1 * play_game(opponent, agent, env)
+                black_wins += 1 if result == -1 else 0
 
             wins += 1 if result == 1 else 0
-        win_pct = wins / num_games
-        print(f"win % at minimax depth {depth} was {win_pct*100:0.1f}")
+        win_pct = 100 * wins / num_games
+        white_pct = 100 * white_wins * 2 / num_games
+        black_pct = 100 * black_wins * 2 / num_games
+        print(f"win % at minimax depth {depth} was {win_pct:0.1f}% ({white_pct:0.1f}% white, {black_pct:0.1f}% black)")
         depth += 1
 
 
