@@ -20,7 +20,7 @@ class MinimaxAgent:
             if score > best_score:
                 best_score = score
                 move = [y,x]
-        return encode_position(move, self.size)
+        return encode_position(move, self.board_size)
 
     def alphabeta(self, board, depth, alpha, beta, is_turn):
         winner = self.check_winner(board)
@@ -64,14 +64,14 @@ class MinimaxAgent:
                     streak = 1
             else:
                 streak += 0 if square == 0 else 1
-            return current, streak, score
+            return {'current':current, 'streak':streak, 'score':score}
 
         def horizontal_score(board):
             score = 0
             for row in board:
                 current, streak = 0, 0
                 for square in row:
-                    current, streak, score = score_consec(square, current, streak, score)
+                    current, streak, score = score_consec(square, current, streak, score).values()
                 score += current * adj_block_score(streak)
             return -score
             
@@ -80,7 +80,7 @@ class MinimaxAgent:
             for i in range(len(board[0])):
                 current, streak = 0, 0
                 for j in range(len(board)):
-                    current, streak, score = score_consec(board[j][i], current, streak, score)
+                    current, streak, score = score_consec(board[j][i], current, streak, score).values()
                 score += current * adj_block_score(streak)
             return -score
 

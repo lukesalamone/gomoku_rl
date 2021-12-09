@@ -143,7 +143,7 @@ def play_minimax_games(num_games, agent, env):
         # play some games, record win % of agent
         opponent = MinimaxAgent(agent.size, depth=depth)
         wins = 0
-        for game in range(num_games):
+        for game in tqdm(range(num_games), desc='playing minimax games'):
             if game % 2 == 0:
                 result = play_game(agent, opponent, env)
             else:

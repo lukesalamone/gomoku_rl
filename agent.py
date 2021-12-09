@@ -20,7 +20,7 @@ class GomokuDataset(Dataset):
 
     def __getitem__(self, idx):
         x = encode_board(self.states[idx])
-        y = torch.tensor(self.values[idx], dtype=float, requires_grad=True)
+        y = torch.tensor(self.values[idx], dtype=torch.float32, requires_grad=True)
         return x,y
 
 class GomokuAgent:
@@ -66,7 +66,7 @@ class GomokuAgent:
                 y = y.to(self.device)
                 optimizer.zero_grad()
                 predictions = self.net(torch.squeeze(x, dim=1))
-                loss = F.mse_loss(predictions, y)
+                loss = F.mse_loss(predictions, y).float()
                 loss.backward()
                 optimizer.step()
                 running_loss += loss.item()
