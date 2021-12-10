@@ -1,12 +1,13 @@
 from environment import GomokuEnvironment
 import wandb
 from tqdm import tqdm
+import time
 
 from agent import GomokuAgent
 from minimax_agent import MinimaxAgent
 
 NUM_ITERATIONS = 100  # alpha go used 80 here
-NUM_EPISODES = 250  # alpha go used 25000 here
+NUM_EPISODES = 1000  # alpha go used 25000 here
 THRESHOLD = 0.55  # same as alpha go paper
 NUM_PIT_GAMES = 150  # alpha go paper used 400
 NUM_MINIMAX_GAMES = 100
@@ -20,7 +21,7 @@ BOARD_SIZE = 9
 # BOARD_SIZE = 9
 
 
-def policy_iteration():
+def policy_iteration(num_iterations=NUM_ITERATIONS):
     wandb.init(project="oh-yeah", entity="gomokoolaid")
 
     wandb.config = {
@@ -39,7 +40,8 @@ def policy_iteration():
     wandb.watch(agent.net)
 
     examples = []
-    for iter_num in range(NUM_ITERATIONS):
+    for iter_num in range(num_iterations):
+        start_time = time.time()
         print('='*25,f' EPISODE {iter_num} ','='*25)
         for _ in tqdm(range(NUM_EPISODES), desc='gathering game episodes'):
             # collect examples from this game
@@ -59,8 +61,8 @@ def policy_iteration():
             agent = new_agent
             wandb.log({"agent_swap": iter_num})
             print(f"new agent won {100*frac_win:0.2f}% of games, updating")
-
-        play_minimax_games(NUM_MINIMAX_GAMES, agent, env)
+            play_minimax_games(NUM_MINIMAX_GAMES, agent, env)
+        print(f'finished iteration after {int(time.time()-start_time)} seconds')
 
     return agent
 
@@ -76,6 +78,7 @@ def exec_episode(env, agent):
 
     # start with white
     color = 1
+    color_hist = []
 
     while not done:
         action = agent.select_move(state, color, env.available_moves())
@@ -84,10 +87,11 @@ def exec_episode(env, agent):
         # reward = None b/c we don't know it yet
         examples.append(state)
         state = next_state
-
+        
+        color_hist.append(color)
         color = 1 if color == -1 else -1
 
-    examples = [(x, reward) for x in examples]
+    examples = [(ex, c, reward) for ex,c in zip(examples, color_hist)]
     return examples
 
 
@@ -162,8 +166,7 @@ def play_minimax_games(num_games, agent, env):
         win_pct = 100 * wins / num_games
         white_pct = 100 * white_wins * 2 / num_games
         black_pct = 100 * black_wins * 2 / num_games
-        print(f"""win % at minimax depth {depth} was {win_pct:0.1f}% 
-                    ({white_pct:0.1f}% white, {black_pct:0.1f}% black)""")
+        print(f"win % at minimax depth {depth} was {win_pct:0.1f}% ")
         depth += 1
 
 

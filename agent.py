@@ -12,14 +12,14 @@ from model import GomokuNet
 from utils import encode_board, decode_position, encode_position
 class GomokuDataset(Dataset):
     def __init__(self, data):
-        self.states, self.values = zip(*data)
+        self.states, self.colors, self.values = zip(*data)
         self.len = len(data)
 
     def __len__(self):
         return self.len
 
     def __getitem__(self, idx):
-        x = encode_board(self.states[idx])
+        x = encode_board(self.states[idx], self.colors[idx])
         y = torch.tensor(self.values[idx], dtype=torch.float32, requires_grad=True)
         return x,y
 
@@ -32,7 +32,7 @@ class GomokuAgent:
         self.size = size
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.net.to(self.device)
-        self.training_mode = False
+        self.training_mode = True
         self.softmax = torch.nn.Softmax(dim=0)
 
     # train based on previous board positions
@@ -50,8 +50,8 @@ class GomokuAgent:
         print(f'training with {len(examples)} examples')
         LEARNING_RATE = 0.001
         TRAIN_EPOCHS = 10
-        BUFFER_SIZE = 10_000
-        BATCH_SIZE = 2048
+        BUFFER_SIZE = 50_000
+        BATCH_SIZE = 16384
 
         if len(examples) > BUFFER_SIZE:
             examples = select_examples(examples, BUFFER_SIZE)
@@ -89,7 +89,7 @@ class GomokuAgent:
         available_moves = set(available_moves)
         available_moves_decoded = [decode_position(pos, self.size) for pos in available_moves]
 
-        board = encode_board(board)
+        board = encode_board(board, color)
 
         color_idx = 0 if color == 1 else 1
         options = []
@@ -100,18 +100,18 @@ class GomokuAgent:
         options = torch.cat(options).to(self.device)
         self.net.eval()
         with torch.no_grad():
-            values = self.net(options)
-            mask = torch.tensor([x in available_moves for x in range(self.size**2)])
+            values = self.net(options).squeeze(dim=1)
 
             if self.training_mode:
                 # sample from probability distribution
-                mask = torch.tensor([x in available_moves for x in range(self.size**2)])
-                probabilities = self.softmax(values)
-                return np.random.choice(range(self.size**2), p=probabilities*mask)
+                idx = torch.multinomial(self.softmax(values), 1)
+                best_move = available_moves_decoded[idx]
             else:
                 # greedy select
-                best_move = available_moves_decoded[torch.argmax(values*mask)]
-                return encode_position(best_move, self.size)
+                best_move = available_moves_decoded[torch.argmax(values)]
+            return encode_position(best_move, self.size)
 
     def save(self, iteration):
-        torch.save(self.net, f'iteration_{iteration}_{int(time.time())}.pt')
+        filename = f'iteration_{iteration}_{int(time.time())}.pt'
+        print(f'saved model as {filename}')
+        torch.save(self.net, filename)

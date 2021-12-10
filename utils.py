@@ -51,7 +51,7 @@ def check_five_in_row(board):
                 return winner
     return 0
 
-def encode_board(board):
+def encode_board(board, color):
     def gather_player_moves(board, player):
         size = len(board)
         result = torch.zeros((size, size))
@@ -63,8 +63,10 @@ def encode_board(board):
     
     white_layer = gather_player_moves(board, player=1)
     black_layer = gather_player_moves(board, player=2)
+    size = (len(board), len(board))
+    color_layer = torch.zeros(size) if color == 1 else torch.ones(size)
     return torch.unsqueeze(
-                torch.stack((white_layer,black_layer)),
+                torch.stack((white_layer,black_layer,color_layer)),
                 dim=0
             )
 
