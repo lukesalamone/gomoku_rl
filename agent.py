@@ -101,6 +101,7 @@ class GomokuAgent:
         self.net.eval()
         with torch.no_grad():
             values = self.net(options)
+            mask = torch.tensor([x in available_moves for x in range(self.size**2)])
 
             if self.training_mode:
                 # sample from probability distribution
@@ -109,7 +110,7 @@ class GomokuAgent:
                 return np.random.choice(range(self.size**2), p=probabilities*mask)
             else:
                 # greedy select
-                best_move = available_moves[torch.argmax(values)]
+                best_move = available_moves_decoded[torch.argmax(values*mask)]
                 return encode_position(best_move, self.size)
 
     def save(self, iteration):
