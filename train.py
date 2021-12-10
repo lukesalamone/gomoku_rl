@@ -49,7 +49,7 @@ def policy_iteration():
         new_agent.train(examples)
 
         # compare new net with previous net
-        frac_win = pit(agent, new_agent, env, num_games=NUM_PIT_GAMES)
+        frac_win = pit(new_agent, agent, env, num_games=NUM_PIT_GAMES)
         wandb.log({"pit_win_pct": frac_win})
         print('')
         if frac_win > THRESHOLD:
@@ -94,6 +94,7 @@ def exec_episode(env, agent):
 # play agent1 against agent2 and return win percentage for agent2
 def pit(agent1, agent2, env, num_games):
     wins = 0
+    total_moves = 0
 
     for game in tqdm(range(num_games), desc="playing pit games"):
 
@@ -106,13 +107,15 @@ def pit(agent1, agent2, env, num_games):
             player2 = agent1
 
         # play one game
-        result = play_game(player1, player2, env)
+        result, num_moves = play_game(player1, player2, env)
+        total_moves += num_moves
 
         if game % 2 == 0 and result == -1:
             wins += 1
         if game % 2 == 1 and result == 1:
             wins += 1
 
+    print(f'average game had {total_moves/num_games} moves')
     return wins / num_games
 
 
@@ -132,10 +135,11 @@ def play_game(player1, player2, env):
             move = player2.select_move(state, -1, available_moves)
         assert move in available_moves, "agent selected illegal move!"
 
+        move_counter += 1
         _, reward, done = env.step(move)
 
     # reward = 1 if player1 wins, -1 if player2 wins, 0 if draw
-    return reward
+    return reward, move_counter
 
 
 def play_minimax_games(num_games, agent, env):
@@ -146,7 +150,7 @@ def play_minimax_games(num_games, agent, env):
         opponent = MinimaxAgent(agent.size, depth=depth)
         wins = 0
         white_wins, black_wins = 0, 0
-        for game in tqdm(range(num_games), desc='playing minimax games'):
+        for game in tqdm(range(num_games), desc=f'playing minimax games (depth={depth})'):
             if game % 2 == 0:
                 result = play_game(agent, opponent, env)
                 white_wins += 1 if result == 1 else 0
@@ -158,7 +162,8 @@ def play_minimax_games(num_games, agent, env):
         win_pct = 100 * wins / num_games
         white_pct = 100 * white_wins * 2 / num_games
         black_pct = 100 * black_wins * 2 / num_games
-        print(f"win % at minimax depth {depth} was {win_pct:0.1f}% ({white_pct:0.1f}% white, {black_pct:0.1f}% black)")
+        print(f"""win % at minimax depth {depth} was {win_pct:0.1f}% 
+                    ({white_pct:0.1f}% white, {black_pct:0.1f}% black)""")
         depth += 1
 
 

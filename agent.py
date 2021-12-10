@@ -32,6 +32,8 @@ class GomokuAgent:
         self.size = size
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.net.to(self.device)
+        self.training_mode = False
+        self.softmax = torch.nn.Softmax(dim=0)
 
     # train based on previous board positions
     def train(self, examples):
@@ -80,39 +82,35 @@ class GomokuAgent:
     # select move by evaluating network directly
     # TODO experiment with training_mode to sample rather than greedy select
     def select_move(self, board, color, available_moves):
+        def place_move(board, y, x, color_idx):
+            board[0,color_idx,y,x] = 1
+            return board
+        
         available_moves = set(available_moves)
-        available_moves = [decode_position(pos, self.size) for pos in available_moves]
+        available_moves_decoded = [decode_position(pos, self.size) for pos in available_moves]
 
         board = encode_board(board)
-        board = board.to(self.device)
 
-        # evaluate value function for each position IF WE WENT THERE
-        # this is equivalent to minimax of depth 1
-        best_val = -float('inf') if color == 1 else float('inf')
-        best_move = None
-        for y,x in available_moves:
-            # print(board.size())
-            if color == 1:
-                board[0,0,y,x] = 1
-            else:
-                board[0,1,y,x] = 1
-
-            value = self.net(board)
-
-            if color == 1:
-                board[0,0,y,x] = 0
-            else:
-                board[0,1,y,x] = 0
-
-            if value > best_val and color == 1:
-                best_val = value
-                best_move = (y,x)
-            elif value < best_val and color == -1:
-                best_val = value
-                best_move = (y,x)
+        color_idx = 0 if color == 1 else 1
+        options = []
         
-        y,x =  best_move
-        return encode_position(best_move, self.size)
+        for y,x in available_moves_decoded:
+            options.append(place_move(board.detach(), y, x, color_idx))
+        
+        options = torch.cat(options).to(self.device)
+        self.net.eval()
+        with torch.no_grad():
+            values = self.net(options)
+
+            if self.training_mode:
+                # sample from probability distribution
+                mask = torch.tensor([x in available_moves for x in range(self.size**2)])
+                probabilities = self.softmax(values)
+                return np.random.choice(range(self.size**2), p=probabilities*mask)
+            else:
+                # greedy select
+                best_move = available_moves[torch.argmax(values)]
+                return encode_position(best_move, self.size)
 
     def save(self, iteration):
         torch.save(self.net, f'iteration_{iteration}_{int(time.time())}.pt')
