@@ -27,8 +27,7 @@ class GomokuNet(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(2*size**2, 64),
             nn.ReLU(),
-            nn.Linear(64, 1),
-            nn.Tanh()
+            nn.Linear(64, 3)
         )
 
     def forward(self, x):

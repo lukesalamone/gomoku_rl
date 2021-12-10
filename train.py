@@ -56,12 +56,16 @@ def policy_iteration(num_iterations=NUM_ITERATIONS):
         print('')
         if frac_win > THRESHOLD:
             # save old agent for posterity
+            agent.save(iter_num)
 
             # replace with new net
             agent = new_agent
             wandb.log({"agent_swap": iter_num})
             print(f"new agent won {100*frac_win:0.2f}% of games, updating")
             play_minimax_games(NUM_MINIMAX_GAMES, agent, env)
+        elif iter_num%10 == 0:
+            agent.save(iter_num)
+            
         print(f'finished iteration after {int(time.time()-start_time)} seconds')
 
     return agent

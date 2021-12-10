@@ -13,6 +13,14 @@ from utils import encode_board, decode_position, encode_position
 class GomokuDataset(Dataset):
     def __init__(self, data):
         self.states, self.colors, self.values = zip(*data)
+
+        mapping = {
+            -1:torch.tensor([1.,0.,0.], dtype=torch.float32, requires_grad=True),
+            0:torch.tensor([0.,1.,0.], dtype=torch.float32, requires_grad=True),
+            1:torch.tensor([0.,0.,1.], dtype=torch.float32, requires_grad=True)
+        }
+
+        self.values = [mapping[val] for val in self.values]
         self.len = len(data)
 
     def __len__(self):
@@ -20,7 +28,7 @@ class GomokuDataset(Dataset):
 
     def __getitem__(self, idx):
         x = encode_board(self.states[idx], self.colors[idx])
-        y = torch.tensor(self.values[idx], dtype=torch.float32, requires_grad=True)
+        y = self.values[idx]
         return x,y
 
 class GomokuAgent:
@@ -62,7 +70,6 @@ class GomokuAgent:
         self.net.to(self.device)
 
         for epoch in tqdm(range(TRAIN_EPOCHS)):
-            # print(f'TRAINING: epoch {epoch+1}/{TRAIN_EPOCHS}')
             running_loss = 0.0
 
             for i,(x,y) in enumerate(dataloader):
@@ -70,7 +77,7 @@ class GomokuAgent:
                 y = y.to(self.device)
                 optimizer.zero_grad()
                 predictions = self.net(torch.squeeze(x, dim=1)).squeeze(dim=1)
-                loss = F.mse_loss(predictions, y).float()
+                loss = F.cross_entropy(predictions, y).float()
                 loss.backward()
                 optimizer.step()
                 running_loss += loss.item()
@@ -100,7 +107,8 @@ class GomokuAgent:
         options = torch.cat(options).to(self.device)
         self.net.eval()
         with torch.no_grad():
-            values = self.net(options).squeeze(dim=1)
+            # select the column color+1 i.e. 0 if color=-1, 2 if color=1
+            values = self.net(options)[:, color+1]
 
             if self.training_mode:
                 # sample from probability distribution
